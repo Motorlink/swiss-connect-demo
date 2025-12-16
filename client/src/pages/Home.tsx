@@ -13,6 +13,7 @@ import { differenceInHours, format } from "date-fns";
 import { de } from "date-fns/locale";
 import L from "leaflet";
 import { ArrowRight, Box, CheckCircle2, Clock, FileText, Search } from "lucide-react";
+import { PODDialog } from "@/components/PODDialog";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -223,15 +224,18 @@ export default function Home() {
                       <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
                       <span className="font-medium">POD vom Fahrer als "Erledigt" gekennzeichnet</span>
                     </div>
-                    <Button 
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-12 text-lg shadow-md hover:shadow-lg transition-all"
-                      onClick={() => {
-                        toast.success(`Abrechnung für Auftrag ${selectedShipment.id} erfolgreich eingeleitet!`);
-                      }}
-                    >
-                      <FileText className="w-5 h-5 mr-2" />
-                      Abrechnung einleiten
-                    </Button>
+                    <div className="flex gap-3">
+                      <PODDialog shipment={selectedShipment} />
+                      <Button 
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold h-12 text-lg shadow-md hover:shadow-lg transition-all"
+                        onClick={() => {
+                          toast.success(`Abrechnung für Auftrag ${selectedShipment.id} erfolgreich eingeleitet!`);
+                        }}
+                      >
+                        <FileText className="w-5 h-5 mr-2" />
+                        Abrechnung einleiten
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-3 bg-slate-100 rounded-lg text-center text-slate-600 font-medium border border-slate-200">
