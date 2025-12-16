@@ -10,7 +10,7 @@ import {
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import L from "leaflet";
-import { Calendar, FileText, MapPin, User } from "lucide-react";
+import { Calendar, FileText, MapPin, User, ShieldCheck } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Shipment } from "../lib/mock-data";
 
@@ -32,7 +32,7 @@ export function PODDialog({ shipment }: PODDialogProps) {
       address: shipment.to.address
     },
     device: "Zebra TC57 (Device ID: 883920)",
-    signatureUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Signature_sample.svg/1200px-Signature_sample.svg.png" // Placeholder signature
+    signatureName: "Hans Müller" // Name for signature font
   };
 
   useEffect(() => {
@@ -82,16 +82,22 @@ export function PODDialog({ shipment }: PODDialogProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
           {/* Left Column: Signature & Details */}
           <div className="space-y-6">
-            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wider">Unterschrift</h3>
-              <div className="bg-white border-2 border-dashed border-slate-300 rounded-lg p-4 flex items-center justify-center h-40">
-                <img 
-                  src={podData.signatureUrl} 
-                  alt="Unterschrift" 
-                  className="max-h-full max-w-full object-contain opacity-80"
-                />
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 relative overflow-hidden">
+              <div className="absolute top-3 right-3 bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 border border-emerald-200">
+                <ShieldCheck className="w-3 h-3" />
+                VERIFIED
               </div>
-              <p className="text-xs text-center text-slate-400 mt-2">Digital signiert am Gerät</p>
+              <h3 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wider">Digitale Unterschrift</h3>
+              <div className="bg-white border border-slate-200 rounded-lg p-6 flex items-center justify-center h-40 shadow-inner relative">
+                <div className="absolute bottom-4 left-4 right-4 border-b-2 border-slate-100"></div>
+                <span className="text-5xl text-slate-800 -rotate-2" style={{ fontFamily: "'Caveat', cursive" }}>
+                  {podData.signatureName}
+                </span>
+              </div>
+              <p className="text-xs text-center text-slate-400 mt-2 flex items-center justify-center gap-1">
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                Biometrisch erfasst & verifiziert
+              </p>
             </div>
 
             <div className="space-y-4">
