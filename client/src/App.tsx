@@ -5,12 +5,23 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import NewShipment from "./pages/NewShipment";
+import Placeholder from "./pages/Placeholder";
+import Shipments from "./pages/Shipments";
+import Tracking from "./pages/Tracking";
 
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/new-shipment"} component={NewShipment} />
+      <Route path={"/shipments"} component={Shipments} />
+      <Route path={"/tracking"} component={Tracking} />
+      <Route path={"/archive"}>{(params) => <Placeholder title="Archiv" />}</Route>
+      <Route path={"/billing"}>{(params) => <Placeholder title="Abrechnung" />}</Route>
+      <Route path={"/documents"}>{(params) => <Placeholder title="Dokumente" />}</Route>
+      <Route path={"/support"}>{(params) => <Placeholder title="Support" />}</Route>
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
