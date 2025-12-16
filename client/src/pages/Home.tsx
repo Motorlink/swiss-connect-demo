@@ -30,12 +30,17 @@ export default function Home() {
         
         // 1. Randomly remove an open shipment (simulating someone else took it)
         const openShipments = newShipments.filter(s => s.status === "offen" && !s.availableFrom);
-        if (openShipments.length > 0 && Math.random() > 0.7) {
+        if (openShipments.length > 0 && Math.random() > 0.5) {
           const toRemove = openShipments[Math.floor(Math.random() * openShipments.length)];
           const index = newShipments.findIndex(s => s.id === toRemove.id);
           if (index !== -1) {
             newShipments.splice(index, 1);
-            toast.info(`Auftrag ${toRemove.id} wurde von einem anderen Fahrer angenommen.`);
+            // Social Proof Popup for removed shipment
+            toast.message("Auftrag vergeben", {
+              description: `Ein Fahrer aus ${toRemove.from.city} hat den Auftrag ${toRemove.id} gerade angenommen.`,
+              icon: <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xs">🚀</div>,
+              duration: 4000,
+            });
             if (selectedShipment?.id === toRemove.id) {
               setSelectedShipment(null);
             }
@@ -43,15 +48,20 @@ export default function Home() {
         }
 
         // 2. Randomly add a new shipment
-        if (Math.random() > 0.6) {
+        if (Math.random() > 0.4) {
           const newShipment = generateRandomShipment();
           newShipments.unshift(newShipment);
-          toast.success(`Neuer Auftrag verfügbar: ${newShipment.from.city} -> ${newShipment.to.city}`);
+          // Social Proof Popup for new shipment
+          toast.message("Neuer Auftrag", {
+            description: `Ein Verlader aus ${newShipment.from.city} hat gerade eine Sendung hochgeladen.`,
+            icon: <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 font-bold text-xs">📦</div>,
+            duration: 4000,
+          });
         }
 
         return newShipments;
       });
-    }, 20000); // Every 20 seconds
+    }, 10000); // Every 10 seconds
 
     return () => clearInterval(interval);
   }, [selectedShipment]);
@@ -62,7 +72,7 @@ export default function Home() {
     s.to.city.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const activeShipments = filteredShipments.filter(s => ["offen", "zugewiesen", "unterwegs"].includes(s.status));
+  const activeShipments = filteredShipments.filter(s => ["offen"].includes(s.status));
   const completedShipments = filteredShipments.filter(s => ["zugestellt", "abgeholt"].includes(s.status));
 
   const getStatusColor = (status: string) => {
@@ -207,12 +217,14 @@ export default function Home() {
                   ) : (
                     <Button 
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-12 text-lg shadow-md hover:shadow-lg transition-all"
-                      onClick={() => {
+                        onClick={() => {
                         const updatedShipments = shipments.map(s => 
                           s.id === selectedShipment.id ? { ...s, status: "zugewiesen" as const } : s
                         );
                         setShipments(updatedShipments);
                         toast.success(`Auftrag ${selectedShipment.id} erfolgreich angenommen!`);
+                        // Remove from selection as it moves to "zugewiesen" which is no longer in "active" tab
+                        setSelectedShipment(null);
                       }}
                     >
                       Auftrag annehmen für CHF {selectedShipment.price.toFixed(2)}
