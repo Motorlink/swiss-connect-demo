@@ -1,4 +1,4 @@
-import { addDays, subHours, subMinutes } from "date-fns";
+import { addDays, addHours, subDays, subHours, subMinutes } from "date-fns";
 
 export type ShipmentStatus = "offen" | "zugewiesen" | "abgeholt" | "unterwegs" | "zugestellt" | "storniert";
 
@@ -33,9 +33,16 @@ export interface Shipment {
   carrier?: string;
   vehicle?: string;
   trackingId?: string;
+  availableFrom?: Date; // New field for future availability
 }
 
 const now = new Date();
+
+// Helper to generate random future date
+const randomFutureDate = (minHours: number, maxHours: number) => {
+  const hours = Math.floor(Math.random() * (maxHours - minHours + 1)) + minHours;
+  return addHours(now, hours);
+};
 
 export const shipments: Shipment[] = [
   {
@@ -342,17 +349,117 @@ export const shipments: Shipment[] = [
     price: 150.00,
     pickupDate: addDays(now, 2),
     deliveryDate: addDays(now, 2)
+  },
+  // Future shipments (available soon)
+  {
+    id: "CH-2025-011",
+    from: {
+      name: "Feldschlösschen Getränke AG",
+      address: "Theophil-Roniger-Strasse",
+      city: "Rheinfelden",
+      zip: "4310",
+      lat: 47.5514,
+      lng: 7.7925
+    },
+    to: {
+      name: "Denner Verteilzentrale",
+      address: "Industriestrasse",
+      city: "Mägenwil",
+      zip: "5506",
+      lat: 47.4097,
+      lng: 8.2358
+    },
+    details: {
+      weight: 24000,
+      pallets: 33,
+      type: "Getränketransport",
+      goods: "Bier / Getränke"
+    },
+    status: "offen",
+    price: 650.00,
+    pickupDate: addDays(now, 3),
+    deliveryDate: addDays(now, 3),
+    availableFrom: addHours(now, 24) // Available in 24h
+  },
+  {
+    id: "CH-2025-012",
+    from: {
+      name: "Lindt & Sprüngli",
+      address: "Seestrasse 204",
+      city: "Kilchberg",
+      zip: "8802",
+      lat: 47.3239,
+      lng: 8.5536
+    },
+    to: {
+      name: "Flughafen Zürich Cargo",
+      address: "Frachtstrasse",
+      city: "Kloten",
+      zip: "8058",
+      lat: 47.4582,
+      lng: 8.5555
+    },
+    details: {
+      weight: 1500,
+      pallets: 3,
+      type: "Luftfracht / Gekühlt",
+      goods: "Schokolade Export"
+    },
+    status: "offen",
+    price: 320.00,
+    pickupDate: addDays(now, 4),
+    deliveryDate: addDays(now, 4),
+    availableFrom: addHours(now, 48) // Available in 48h
   }
 ];
 
-function subDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() - days);
-  return result;
-}
+// Helper to generate a random new shipment
+export function generateRandomShipment(): Shipment {
+  const id = `CH-2025-${Math.floor(Math.random() * 1000) + 100}`;
+  const cities = [
+    { name: "Zürich", lat: 47.3769, lng: 8.5417 },
+    { name: "Genf", lat: 46.2044, lng: 6.1432 },
+    { name: "Basel", lat: 47.5596, lng: 7.5886 },
+    { name: "Bern", lat: 46.9480, lng: 7.4474 },
+    { name: "Lausanne", lat: 46.5197, lng: 6.6323 },
+    { name: "Winterthur", lat: 47.4988, lng: 8.7237 },
+    { name: "Luzern", lat: 47.0502, lng: 8.3093 },
+    { name: "St. Gallen", lat: 47.4245, lng: 9.3767 }
+  ];
+  
+  const from = cities[Math.floor(Math.random() * cities.length)];
+  let to = cities[Math.floor(Math.random() * cities.length)];
+  while (to.name === from.name) {
+    to = cities[Math.floor(Math.random() * cities.length)];
+  }
 
-function addHours(date: Date, hours: number): Date {
-  const result = new Date(date);
-  result.setHours(result.getHours() + hours);
-  return result;
+  return {
+    id,
+    from: {
+      name: "Demo Firma AG",
+      address: "Industriestrasse 1",
+      city: from.name,
+      zip: "1000",
+      lat: from.lat,
+      lng: from.lng
+    },
+    to: {
+      name: "Empfänger GmbH",
+      address: "Gewerbepark 5",
+      city: to.name,
+      zip: "2000",
+      lat: to.lat,
+      lng: to.lng
+    },
+    details: {
+      weight: Math.floor(Math.random() * 20000) + 100,
+      pallets: Math.floor(Math.random() * 30) + 1,
+      type: "Standard",
+      goods: "Allgemeine Fracht"
+    },
+    status: "offen",
+    price: Math.floor(Math.random() * 1000) + 100,
+    pickupDate: addDays(new Date(), Math.floor(Math.random() * 5) + 1),
+    deliveryDate: addDays(new Date(), Math.floor(Math.random() * 5) + 2)
+  };
 }

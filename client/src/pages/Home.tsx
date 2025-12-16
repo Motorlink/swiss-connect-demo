@@ -7,17 +7,53 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shipment, shipments } from "@/lib/mock-data";
+import { generateRandomShipment, Shipment, shipments as initialShipments } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { differenceInHours, format } from "date-fns";
 import { de } from "date-fns/locale";
 import L from "leaflet";
-import { ArrowRight, Box, Search } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, Box, Clock, Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function Home() {
+  const [shipments, setShipments] = useState<Shipment[]>(initialShipments);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Simulation Loop
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShipments(currentShipments => {
+        const newShipments = [...currentShipments];
+        
+        // 1. Randomly remove an open shipment (simulating someone else took it)
+        const openShipments = newShipments.filter(s => s.status === "offen" && !s.availableFrom);
+        if (openShipments.length > 0 && Math.random() > 0.7) {
+          const toRemove = openShipments[Math.floor(Math.random() * openShipments.length)];
+          const index = newShipments.findIndex(s => s.id === toRemove.id);
+          if (index !== -1) {
+            newShipments.splice(index, 1);
+            toast.info(`Auftrag ${toRemove.id} wurde von einem anderen Fahrer angenommen.`);
+            if (selectedShipment?.id === toRemove.id) {
+              setSelectedShipment(null);
+            }
+          }
+        }
+
+        // 2. Randomly add a new shipment
+        if (Math.random() > 0.6) {
+          const newShipment = generateRandomShipment();
+          newShipments.unshift(newShipment);
+          toast.success(`Neuer Auftrag verfügbar: ${newShipment.from.city} -> ${newShipment.to.city}`);
+        }
+
+        return newShipments;
+      });
+    }, 20000); // Every 20 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedShipment]);
 
   const filteredShipments = shipments.filter(s => 
     s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -70,7 +106,12 @@ export default function Home() {
           
           {/* Header */}
           <div className="p-6 border-b border-slate-100 bg-white">
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">Dashboard</h1>
+            <div className="flex justify-between items-center mb-1">
+              <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse">
+                Live Demo
+              </Badge>
+            </div>
             <p className="text-slate-500 text-sm mb-4">Willkommen zurück, Max.</p>
             
             <div className="relative">
@@ -154,21 +195,28 @@ export default function Home() {
 
               <div className="flex flex-col gap-3">
                 {selectedShipment.status === "offen" ? (
-                  <Button 
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-12 text-lg shadow-md hover:shadow-lg transition-all"
-                    onClick={() => {
-                      // Simulate accepting order
-                      const updatedShipments = shipments.map(s => 
-                        s.id === selectedShipment.id ? { ...s, status: "zugewiesen" } : s
-                      );
-                      // In a real app, this would be an API call
-                      // For demo, we just show a success message (toast would be better)
-                      alert(`Auftrag ${selectedShipment.id} erfolgreich angenommen!`);
-                      window.location.reload(); // Simple reload to reset state for demo
-                    }}
-                  >
-                    Auftrag annehmen für CHF {selectedShipment.price.toFixed(2)}
-                  </Button>
+                  selectedShipment.availableFrom && new Date() < selectedShipment.availableFrom ? (
+                    <Button 
+                      disabled
+                      className="w-full bg-slate-100 text-slate-400 font-semibold h-12 text-lg border border-slate-200 cursor-not-allowed"
+                    >
+                      <Clock className="w-5 h-5 mr-2" />
+                      Verfügbar ab {format(selectedShipment.availableFrom, "dd.MM. HH:mm")}
+                    </Button>
+                  ) : (
+                    <Button 
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-12 text-lg shadow-md hover:shadow-lg transition-all"
+                      onClick={() => {
+                        const updatedShipments = shipments.map(s => 
+                          s.id === selectedShipment.id ? { ...s, status: "zugewiesen" as const } : s
+                        );
+                        setShipments(updatedShipments);
+                        toast.success(`Auftrag ${selectedShipment.id} erfolgreich angenommen!`);
+                      }}
+                    >
+                      Auftrag annehmen für CHF {selectedShipment.price.toFixed(2)}
+                    </Button>
+                  )
                 ) : (
                   <div className="p-3 bg-slate-100 rounded-lg text-center text-slate-600 font-medium border border-slate-200">
                     Status: {selectedShipment.status.toUpperCase()}
@@ -218,6 +266,9 @@ export default function Home() {
 }
 
 function ShipmentCard({ shipment, isSelected, onClick, statusColor }: { shipment: Shipment, isSelected: boolean, onClick: () => void, statusColor: string }) {
+  const isFuture = shipment.availableFrom && new Date() < shipment.availableFrom;
+  const hoursUntilAvailable = shipment.availableFrom ? differenceInHours(shipment.availableFrom, new Date()) : 0;
+
   return (
     <div 
       onClick={onClick}
@@ -225,7 +276,8 @@ function ShipmentCard({ shipment, isSelected, onClick, statusColor }: { shipment
         "p-4 rounded-xl border transition-all cursor-pointer hover:shadow-md group relative overflow-hidden",
         isSelected 
           ? "bg-slate-50 border-emerald-500 ring-1 ring-emerald-500 shadow-sm" 
-          : "bg-white border-slate-200 hover:border-emerald-300"
+          : "bg-white border-slate-200 hover:border-emerald-300",
+        isFuture && "opacity-75 bg-slate-50/50"
       )}
     >
       {isSelected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />}
@@ -238,6 +290,12 @@ function ShipmentCard({ shipment, isSelected, onClick, statusColor }: { shipment
           {shipment.details.type.includes("Express") && (
             <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-0 text-[10px] h-5 px-1.5">
               Express
+            </Badge>
+          )}
+          {isFuture && (
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-0 text-[10px] h-5 px-1.5 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {hoursUntilAvailable > 24 ? `In ${Math.floor(hoursUntilAvailable/24)} Tagen` : `In ${hoursUntilAvailable}h`}
             </Badge>
           )}
         </div>
