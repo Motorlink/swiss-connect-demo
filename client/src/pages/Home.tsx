@@ -2,15 +2,17 @@ import Layout from "@/components/Layout";
 import { MapView } from "@/components/Map";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shipment, shipments } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowRight, Box, Calendar, Clock, MapPin, Search, Truck } from "lucide-react";
+import L from "leaflet";
+import { ArrowRight, Box, Search } from "lucide-react";
 import { useState } from "react";
 
 export default function Home() {
@@ -37,6 +39,28 @@ export default function Home() {
       default: return "bg-slate-100 text-slate-700 border-slate-200";
     }
   };
+
+  // Prepare markers for Leaflet
+  const markers = shipments.map(s => ({
+    position: [s.from.lat, s.from.lng] as [number, number],
+    title: s.from.name,
+    content: (
+      <div>
+        <div className="font-bold">{s.id}</div>
+        <div>{s.from.city} → {s.to.city}</div>
+        <div className="text-xs text-slate-500 mt-1">{s.status}</div>
+      </div>
+    ),
+    icon: L.divIcon({
+      className: "bg-transparent",
+      html: `<div class="w-4 h-4 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform hover:scale-125 ${
+        s.status === 'unterwegs' ? 'bg-amber-500' : 
+        s.status === 'zugestellt' ? 'bg-emerald-500' : 
+        s.status === 'offen' ? 'bg-blue-500' : 'bg-slate-500'
+      }"></div>`
+    }),
+    onClick: () => setSelectedShipment(s)
+  }));
 
   return (
     <Layout>
@@ -128,9 +152,33 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button className="flex-1 bg-slate-900 hover:bg-slate-800 text-white">Details</Button>
-                <Button variant="outline" className="flex-1 border-slate-300">Dokumente</Button>
+              <div className="flex flex-col gap-3">
+                {selectedShipment.status === "offen" ? (
+                  <Button 
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-12 text-lg shadow-md hover:shadow-lg transition-all"
+                    onClick={() => {
+                      // Simulate accepting order
+                      const updatedShipments = shipments.map(s => 
+                        s.id === selectedShipment.id ? { ...s, status: "zugewiesen" } : s
+                      );
+                      // In a real app, this would be an API call
+                      // For demo, we just show a success message (toast would be better)
+                      alert(`Auftrag ${selectedShipment.id} erfolgreich angenommen!`);
+                      window.location.reload(); // Simple reload to reset state for demo
+                    }}
+                  >
+                    Auftrag annehmen für CHF {selectedShipment.price.toFixed(2)}
+                  </Button>
+                ) : (
+                  <div className="p-3 bg-slate-100 rounded-lg text-center text-slate-600 font-medium border border-slate-200">
+                    Status: {selectedShipment.status.toUpperCase()}
+                  </div>
+                )}
+                
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 border-slate-300">Details ansehen</Button>
+                  <Button variant="outline" className="flex-1 border-slate-300">Dokumente</Button>
+                </div>
               </div>
             </div>
           )}
@@ -140,61 +188,16 @@ export default function Home() {
         <div className="flex-1 relative bg-slate-100 h-[50vh] lg:h-full">
           <MapView 
             className="w-full h-full"
-            onMapReady={(map: google.maps.Map) => {
-              // Add markers for all shipments
-              shipments.forEach(s => {
-                new google.maps.Marker({
-                  position: { lat: s.from.lat, lng: s.from.lng },
-                  map: map,
-                  title: s.from.name,
-                  icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 6,
-                    fillColor: "#10b981",
-                    fillOpacity: 1,
-                    strokeWeight: 2,
-                    strokeColor: "#ffffff",
-                  }
-                });
-              });
-
-              // If shipment selected, zoom to it and show route
+            markers={markers}
+            onMapReady={(map) => {
               if (selectedShipment) {
-                const bounds = new google.maps.LatLngBounds();
-                bounds.extend({ lat: selectedShipment.from.lat, lng: selectedShipment.from.lng });
-                bounds.extend({ lat: selectedShipment.to.lat, lng: selectedShipment.to.lng });
-                map.fitBounds(bounds);
-
-                const directionsService = new google.maps.DirectionsService();
-                const directionsRenderer = new google.maps.DirectionsRenderer({
-                  map,
-                  suppressMarkers: true,
-                  polylineOptions: {
-                    strokeColor: "#0f172a",
-                    strokeWeight: 4,
-                    strokeOpacity: 0.8
-                  }
-                });
-
-                directionsService.route({
-                  origin: { lat: selectedShipment.from.lat, lng: selectedShipment.from.lng },
-                  destination: { lat: selectedShipment.to.lat, lng: selectedShipment.to.lng },
-                  travelMode: google.maps.TravelMode.DRIVING
-                }, (result, status) => {
-                  if (status === "OK") {
-                    directionsRenderer.setDirections(result);
-                  }
-                });
-              } else {
-                // Default view: Switzerland
-                map.setCenter({ lat: 46.8182, lng: 8.2275 });
-                map.setZoom(8);
+                map.flyTo([selectedShipment.from.lat, selectedShipment.from.lng], 10);
               }
             }}
           />
           
           {/* Map Overlay Stats */}
-          <div className="absolute top-6 right-6 flex gap-3">
+          <div className="absolute top-6 right-6 flex gap-3 z-[400]">
             <Card className="bg-white/90 backdrop-blur shadow-lg border-0 w-32">
               <CardContent className="p-3 text-center">
                 <p className="text-xs text-slate-500 font-medium uppercase">Unterwegs</p>
@@ -269,6 +272,3 @@ function ShipmentCard({ shipment, isSelected, onClick, statusColor }: { shipment
     </div>
   );
 }
-
-// Helper for conditional classes
-import { cn } from "@/lib/utils";

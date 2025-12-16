@@ -1,10 +1,11 @@
 import Layout from "@/components/Layout";
 import { MapView } from "@/components/Map";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { shipments } from "@/lib/mock-data";
+import L from "leaflet";
 import { Search, Truck } from "lucide-react";
 import { useState } from "react";
 
@@ -12,11 +13,33 @@ export default function Tracking() {
   const [searchQuery, setSearchQuery] = useState("");
   const activeShipments = shipments.filter(s => ["unterwegs", "zugewiesen"].includes(s.status));
 
+  // Prepare markers for Leaflet
+  const markers = activeShipments.map(s => ({
+    position: [
+      s.from.lat + (s.to.lat - s.from.lat) * 0.4, // Simulate position
+      s.from.lng + (s.to.lng - s.from.lng) * 0.4 
+    ] as [number, number],
+    title: `LKW ${s.vehicle}`,
+    content: (
+      <div>
+        <div className="font-bold">{s.carrier}</div>
+        <div>{s.from.city} → {s.to.city}</div>
+        <div className="text-xs text-slate-500 mt-1">Fahrzeug: {s.vehicle}</div>
+      </div>
+    ),
+    icon: L.divIcon({
+      className: "bg-transparent",
+      html: `<div class="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-white">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+      </div>`
+    })
+  }));
+
   return (
     <Layout>
       <div className="flex h-full relative">
         {/* Map Overlay Panel */}
-        <div className="absolute left-4 top-4 bottom-4 w-80 bg-white rounded-xl shadow-2xl z-10 flex flex-col border border-slate-200 overflow-hidden">
+        <div className="absolute left-4 top-4 bottom-4 w-80 bg-white rounded-xl shadow-2xl z-[400] flex flex-col border border-slate-200 overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
             <h2 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
               <Truck className="w-4 h-4 text-emerald-500" />
@@ -63,43 +86,9 @@ export default function Tracking() {
         <div className="flex-1 h-full bg-slate-100">
           <MapView 
             className="w-full h-full"
-            onMapReady={(map: google.maps.Map) => {
-              map.setCenter({ lat: 46.8182, lng: 8.2275 });
-              map.setZoom(8);
-
-              activeShipments.forEach(s => {
-                // Truck Marker
-                new google.maps.Marker({
-                  position: { 
-                    lat: s.from.lat + (s.to.lat - s.from.lat) * 0.4, // Simulate position
-                    lng: s.from.lng + (s.to.lng - s.from.lng) * 0.4 
-                  },
-                  map: map,
-                  title: `LKW ${s.vehicle}`,
-                  icon: {
-                    path: "M17 8h3l3 4v6h-2v2h-2v-2H5v2H3v-2H1V8h2V6h14v2z", // Simple truck path
-                    scale: 1.5,
-                    fillColor: "#0f172a",
-                    fillOpacity: 1,
-                    strokeWeight: 1,
-                    strokeColor: "#ffffff",
-                    anchor: new google.maps.Point(10, 10)
-                  }
-                });
-
-                // Route Line
-                const line = new google.maps.Polyline({
-                  path: [
-                    { lat: s.from.lat, lng: s.from.lng },
-                    { lat: s.to.lat, lng: s.to.lng }
-                  ],
-                  geodesic: true,
-                  strokeColor: "#10b981",
-                  strokeOpacity: 0.6,
-                  strokeWeight: 4,
-                  map: map
-                });
-              });
+            markers={markers}
+            onMapReady={(map) => {
+              map.setView([46.8182, 8.2275], 8);
             }}
           />
         </div>
